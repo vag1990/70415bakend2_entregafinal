@@ -1,6 +1,6 @@
 import express from "express";
-import CartDAO from "../dao/cart.dao.js"; // Asegúrate de importar correctamente el CartDAO
-import { checkAuth } from "../middlewares/auth.middleware.js"; // Si tienes un middleware de autenticación
+import CartDAO from "../dao/cart.dao.js"; 
+import { checkAuth } from "../middlewares/authorize.middleware.js"; 
 import ProductModel from "../models/product.model.js";
 
 const router = express.Router();
