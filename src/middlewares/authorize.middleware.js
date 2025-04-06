@@ -1,5 +1,5 @@
 export const checkAuth = (req, res, next) => {
-  const user = req.user;  // Asumiendo que el usuario está disponible en req.user
+  const user = req.user;  
 
   if (!user) {
     return res.status(401).json({ error: "No autenticado" });
