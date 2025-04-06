@@ -7,8 +7,8 @@ document.addEventListener("DOMContentLoaded", () => {
       button.addEventListener("click", async () => {
         const productId = button.dataset.id;
   
-        // Acá deberías tener el ID del carrito. Podrías obtenerlo de una cookie, localStorage o variable global.
-        const cartId = "tu_cart_id_aca"; // Reemplazar por un método dinámico más adelante
+        
+        const cartId = "tu_cart_id_aca"; 
   
         try {
           const response = await fetch(`/api/carts/${cartId}/product/${productId}`, {
