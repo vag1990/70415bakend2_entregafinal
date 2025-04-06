@@ -6,6 +6,10 @@ import productsRouter from "./routes/products.router.js";
 import cartsRouter from "./routes/carts.router.js";
 import viewsRouter from "./routes/views.router.js";
 
+import passport from "passport";
+import initializePassport from "./config/passport.config.js";
+initializePassport();
+
 const app = express();
 const PUERTO = 8080;
 
@@ -23,6 +27,7 @@ app.set("views", "./src/views");
 app.use("/api/products", productsRouter);
 app.use("/api/carts", cartsRouter);
 app.use("/", viewsRouter);
+app.use(passport.initialize());
 
 app.listen(PUERTO, () => {
     console.log(`Servidor escuchando en el puerto ${PUERTO}`);
