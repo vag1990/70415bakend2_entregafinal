@@ -1,13 +1,15 @@
 import { Router } from "express";
 import { register, login, current } from "../controllers/session.controller.js";
-
+import UserModel from "../models/user.model.js";
 import express from "express";
 import UserDTO from "../dto/user.dto.js";
 import passport from "passport";
+import jwt from "jsonwebtoken";
+
 
 const router = express.Router();
 
-const JWT_SECRET = "secretoJWT123";
+const JWT_SECRET = "coderSecret";
 
 
 router.post("/login", async (req, res) => {
