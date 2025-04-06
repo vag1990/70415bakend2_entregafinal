@@ -28,4 +28,5 @@ class ProductDAO {
   }
 }
 
-export default new ProductDAO();
+const productDAO = new ProductDAO();
+export default productDAO; 

@@ -2,12 +2,12 @@ import express from "express";
 import passport from "passport";
 
 import CartDAO from "../dao/cart.dao.js";
-import ProductDAO from "../dao/product.dao.js";
+import productDAO from "../dao/product.dao.js";
 import TicketService from "../services/ticket.service.js";
 
 const router = express.Router();
 const cartDAO = new CartDAO();
-const productDAO = new ProductDAO();
+
 const ticketService = new TicketService();
 
 // Crear carrito
@@ -35,18 +35,22 @@ router.get("/:cid", async (req, res) => {
 });
 
 // Agregar producto a carrito
-router.post("/:cid/product/:pid", passport.authenticate("jwt", { session: false }), async (req, res) => {
-  try {
-    const { cid, pid } = req.params;
-    const quantity = req.body.quantity || 1;
-    const updatedCart = await cartDAO.agregarProducto(cid, pid, quantity);
+router.post(
+  "/:cid/product/:pid",
+  passport.authenticate("jwt", { session: false }),
+  async (req, res) => {
+    try {
+      const { cid, pid } = req.params;
+      const quantity = req.body.quantity || 1;
+      const updatedCart = await cartDAO.agregarProducto(cid, pid, quantity);
 
-    res.json(updatedCart);
-  } catch (error) {
-    console.error("Error al agregar producto al carrito:", error);
-    res.status(500).json({ error: "Error interno del servidor" });
+      res.json(updatedCart);
+    } catch (error) {
+      console.error("Error al agregar producto al carrito:", error);
+      res.status(500).json({ error: "Error interno del servidor" });
+    }
   }
-});
+);
 
 // Eliminar producto de carrito
 router.delete("/:cid/product/:pid", async (req, res) => {
@@ -60,10 +64,13 @@ router.delete("/:cid/product/:pid", async (req, res) => {
   }
 });
 
-// Actualizar productos del carrito (array de objetos {product, quantity})
+// Actualizar productos del carrito
 router.put("/:cid", async (req, res) => {
   try {
-    const updatedCart = await cartDAO.actualizarProductos(req.params.cid, req.body);
+    const updatedCart = await cartDAO.actualizarProductos(
+      req.params.cid,
+      req.body
+    );
     res.json(updatedCart);
   } catch (error) {
     console.error("Error al actualizar carrito:", error);
@@ -95,57 +102,67 @@ router.delete("/:cid", async (req, res) => {
   }
 });
 
-// Finalizar compra y generar ticket 🎟️
-router.post("/:cid/purchase", passport.authenticate("jwt", { session: false }), async (req, res) => {
-  try {
-    const cartId = req.params.cid;
-    const userEmail = req.user.email;
+// Finalizar compra y generar ticket
+router.post(
+  "/:cid/purchase",
+  passport.authenticate("jwt", { session: false }),
+  async (req, res) => {
+    try {
+      const cartId = req.params.cid;
+      const userEmail = req.user.email;
 
-    const carrito = await cartDAO.obtenerCarritoConProductos(cartId);
-    if (!carrito) return res.status(404).json({ error: "Carrito no encontrado" });
+      const carrito = await cartDAO.obtenerCarritoConProductos(cartId);
+      if (!carrito) return res.status(404).json({ error: "Carrito no encontrado" });
 
-    const productosComprados = [];
-    const productosNoComprados = [];
+      const productosComprados = [];
+      const productosNoComprados = [];
 
-    for (const item of carrito.products) {
-      const producto = await productDAO.getById(item.product._id);
+      for (const item of carrito.products) {
+        const producto = await productDAO.getById(item.product._id);
 
-      if (producto.stock >= item.quantity) {
-        producto.stock -= item.quantity;
-        await productDAO.update(producto._id, { stock: producto.stock });
-        productosComprados.push({
-          product: producto._id,
-          quantity: item.quantity,
-          price: producto.price,
-        });
-      } else {
-        productosNoComprados.push(item.product._id);
+        if (producto.stock >= item.quantity) {
+          producto.stock -= item.quantity;
+          await productDAO.update(producto._id, { stock: producto.stock });
+          productosComprados.push({
+            product: producto._id,
+            quantity: item.quantity,
+            price: producto.price,
+          });
+        } else {
+          productosNoComprados.push(item.product._id);
+        }
       }
+
+      const total = productosComprados.reduce(
+        (acc, p) => acc + p.quantity * p.price,
+        0
+      );
+
+      const ticket = await ticketService.createTicket({
+        amount: total,
+        purchaser: userEmail,
+      });
+
+      await cartDAO.actualizarProductos(
+        cartId,
+        carrito.products.filter((item) =>
+          productosNoComprados.includes(item.product._id.toString())
+        )
+      );
+
+      res.json({
+        message:
+          productosNoComprados.length > 0
+            ? "Compra parcial realizada. Algunos productos no tenían stock suficiente."
+            : "Compra completa realizada.",
+        ticket,
+        productosNoComprados,
+      });
+    } catch (error) {
+      console.error("Error al procesar compra:", error);
+      res.status(500).json({ error: "Error interno del servidor" });
     }
-
-    const total = productosComprados.reduce((acc, p) => acc + p.quantity * p.price, 0);
-
-    const ticket = await ticketService.createTicket({
-      amount: total,
-      purchaser: userEmail,
-    });
-
-    await cartDAO.actualizarProductos(cartId, carrito.products.filter(item =>
-      productosNoComprados.includes(item.product._id.toString())
-    ));
-
-    res.json({
-      message: productosNoComprados.length > 0
-        ? "Compra parcial realizada. Algunos productos no tenían stock suficiente."
-        : "Compra completa realizada.",
-      ticket,
-      productosNoComprados,
-    });
-
-  } catch (error) {
-    console.error("Error al procesar compra:", error);
-    res.status(500).json({ error: "Error interno del servidor" });
   }
-});
+);
 
 export default router;
