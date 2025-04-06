@@ -10,6 +10,9 @@ import passport from "passport";
 import initializePassport from "./config/passport.config.js";
 initializePassport();
 
+
+
+
 const app = express();
 const PUERTO = 8080;
 
@@ -32,3 +35,6 @@ app.use(passport.initialize());
 app.listen(PUERTO, () => {
     console.log(`Servidor escuchando en el puerto ${PUERTO}`);
 });
+
+import sessionRouter from "./routes/session.router.js";
+app.use("/api/session", sessionRouter);
