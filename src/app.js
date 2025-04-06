@@ -1,7 +1,6 @@
 import express from "express";
 import exphbs from "express-handlebars";
 import "./database.js";
-
 import productsRouter from "./routes/products.router.js";
 import cartsRouter from "./routes/carts.router.js";
 import viewsRouter from "./routes/views.router.js";
@@ -9,9 +8,6 @@ import viewsRouter from "./routes/views.router.js";
 import passport from "passport";
 import initializePassport from "./config/passport.config.js";
 initializePassport();
-
-
-
 
 const app = express();
 const PUERTO = 8080;
@@ -26,15 +22,18 @@ app.engine("handlebars", exphbs.engine());
 app.set("view engine", "handlebars");
 app.set("views", "./src/views");
 
+import sessionRouter from "./routes/session.router.js";
+
 // Rutas
+app.use(passport.initialize());
 app.use("/api/products", productsRouter);
 app.use("/api/carts", cartsRouter);
 app.use("/", viewsRouter);
-app.use(passport.initialize());
+app.use("/api/session", sessionRouter);
+
 
 app.listen(PUERTO, () => {
     console.log(`Servidor escuchando en el puerto ${PUERTO}`);
 });
 
-import sessionRouter from "./routes/session.router.js";
-app.use("/api/session", sessionRouter);
+
