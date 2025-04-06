@@ -1,25 +1,28 @@
 <h1>PRODUCTOS</h1>
 
 <div class="products-container">
-   {{#each productos}}
-   <div class="product">
+  {{#each productos}}
+    <div class="product">
       <h2>{{title}}</h2>
       <p>{{description}}</p>
       <p>Precio: ${{price}}</p>
       <p>Categoría: {{category}}</p>
       <button class="btn-agregar" data-id="{{_id}}">Agregar al carrito</button>
-   </div>
-   {{/each}}
+    </div>
+  {{/each}}
 </div>
 
 <div class="pagination">
-   {{#if hasPrevPage}}
-      <a href="/products?page={{prevPage}}">Anterior</a>
-   {{/if}}
-   <p>Página {{currentPage}} de {{totalPages}}</p>
-   {{#if hasNextPage}}
-      <a href="/products?page={{nextPage}}">Siguiente</a>
-   {{/if}}
+  {{#if hasPrevPage}}
+    <a href="/products?page={{prevPage}}">Anterior</a>
+  {{/if}}
+  <p>Página {{currentPage}} de {{totalPages}}</p>
+  {{#if hasNextPage}}
+    <a href="/products?page={{nextPage}}">Siguiente</a>
+  {{/if}}
 </div>
+
+<hr />
+<button id="btn-comprar">Comprar</button>
 
 <script src="/js/products.js"></script>

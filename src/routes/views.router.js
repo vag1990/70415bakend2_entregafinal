@@ -6,6 +6,11 @@ const router = express.Router();
 const productManager = new ProductManager();
 const cartManager = new CartManager();
 
+// 👉 Redirección cuando alguien entra a "/"
+router.get("/", (req, res) => {
+  res.redirect("/login.html");
+});
+
 router.get("/products", async (req, res) => {
    try {
       const { page = 1, limit = 2 } = req.query;
@@ -51,7 +56,6 @@ router.get("/carts/:cid", async (req, res) => {
 
       const productosEnCarrito = carrito.products.map(item => ({
          product: item.product.toObject(),
-         
          quantity: item.quantity
       }));
 

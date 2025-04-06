@@ -1,109 +1,65 @@
-async function login() {
-    const email = document.getElementById("email").value;
-    const password = document.getElementById("password").value;
-  
-    const res = await fetch("/api/session/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
-    });
-  
-    const data = await res.json();
-  
-    if (res.ok) {
-      const token = data.token;
-      localStorage.setItem("token", token);
-  
-      // Obtener current user
-      const currentRes = await fetch("/api/session/current", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-  
-      const currentData = await currentRes.json();
-      localStorage.setItem("cartId", currentData.user.cart);
-  
-      document.getElementById("login-section").style.display = "none";
-      document.getElementById("app-section").style.display = "block";
-  
-      fetchProducts();
-    } else {
-      alert("Error al iniciar sesión");
-    }
-  }
-  
-  async function fetchProducts() {
-    const token = localStorage.getItem("token");
-  
-    const res = await fetch("/api/products", {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-  
-    const data = await res.json();
-  
-    const productsDiv = document.getElementById("products");
-    productsDiv.innerHTML = "";
-  
-    data.payload.forEach((prod) => {
-      const div = document.createElement("div");
-      div.innerHTML = `
-        <p><strong>${prod.title}</strong> - $${prod.price}</p>
-        <button onclick="addToCart('${prod._id}')">Agregar al carrito</button>
-      `;
-      productsDiv.appendChild(div);
-    });
-  }
-  
-  async function addToCart(productId) {
-    const token = localStorage.getItem("token");
-    const cartId = localStorage.getItem("cartId");
-  
-    const res = await fetch(`/api/carts/${cartId}/product/${productId}`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-  
-    if (res.ok) {
-      alert("Producto agregado al carrito!");
-    } else {
-      alert("Error al agregar producto");
-    }
-  }
-  
-  async function purchaseCart() {
-    const token = localStorage.getItem("token");
-    const cartId = localStorage.getItem("cartId");
-  
-    const res = await fetch(`/api/carts/${cartId}/purchase`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-  
-    const data = await res.json();
-  
-    if (res.ok) {
-      const ticketDiv = document.getElementById("ticket");
-      ticketDiv.innerHTML = `
-        <h3>🎫 Ticket generado:</h3>
-        <p><strong>Código:</strong> ${data.ticket.code}</p>
-        <p><strong>Total:</strong> $${data.ticket.amount}</p>
-        <p><strong>Comprador:</strong> ${data.ticket.purchaser}</p>
-        <p><strong>Fecha:</strong> ${new Date(data.ticket.purchase_datetime).toLocaleString()}</p>
-      `;
-    } else {
-      alert("Error al comprar carrito");
-    }
-  }
-  
-  function logout() {
-    localStorage.clear();
-    location.reload();
-  }
-  
+let token = "";
+let cartId = null;
+
+function guardarToken() {
+  token = document.getElementById("tokenInput").value;
+  alert("Token guardado");
+}
+
+async function cargarProductos() {
+  const res = await fetch("/api/products");
+  const data = await res.json();
+  const container = document.getElementById("productos");
+
+  container.innerHTML = "";
+  data.payload.forEach(prod => {
+    const div = document.createElement("div");
+    div.innerHTML = `
+      <p><strong>${prod.title}</strong> - $${prod.price}</p>
+      <button onclick="agregarAlCarrito('${prod._id}')">Agregar al carrito</button>
+    `;
+    container.appendChild(div);
+  });
+}
+
+async function obtenerOCrearCarrito() {
+  if (cartId) return cartId;
+
+  // Podés ajustar si tenés un endpoint específico para obtener el carrito del usuario
+  const res = await fetch("/api/carts", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  const data = await res.json();
+  cartId = data._id || data.cid || data.cart || data; // depende cómo devuelvas
+  return cartId;
+}
+
+async function agregarAlCarrito(productId) {
+  const cid = await obtenerOCrearCarrito();
+
+  const res = await fetch(`/api/carts/${cid}/product/${productId}`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` }
+  });
+
+  const data = await res.json();
+  console.log("Producto agregado:", data);
+  alert("Producto agregado al carrito");
+}
+
+async function realizarCompra() {
+  const cid = await obtenerOCrearCarrito();
+
+  const res = await fetch(`/api/carts/${cid}/purchase`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` }
+  });
+
+  const data = await res.json();
+  console.log("Compra realizada:", data);
+  alert(`Compra realizada. Código de ticket: ${data.ticket?.code}`);
+}
+
+cargarProductos();

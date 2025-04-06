@@ -2,31 +2,22 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>App de Productos</title>
+  <title>Shop Online</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <script defer src="/js/main.js"></script>
 </head>
 <body>
-  <h1>Bienvenido a la tienda 🛒</h1>
+  <h1 class="titulo-pagina">Bienvenido a la tienda</h1>
 
-  <div id="login-section">
-    <h2>Login</h2>
-    <input type="email" id="email" placeholder="Email" />
-    <input type="password" id="password" placeholder="Contraseña" />
-    <button onclick="login()">Iniciar sesión</button>
+  <div class="token-box">
+    <label for="tokenInput">Token JWT:</label>
+    <input type="text" id="tokenInput" placeholder="Pegá tu token acá" />
+    <button onclick="guardarToken()">Guardar token</button>
   </div>
 
-  <div id="app-section" style="display: none;">
-    <h2>Productos</h2>
-    <div id="products"></div>
-
-    <br />
-    <button onclick="purchaseCart()">Comprar carrito</button>
-    <div id="ticket"></div>
-
-    <br /><br />
-    <button onclick="logout()">Cerrar sesión</button>
-  </div>
-
-  <script src="./js/main.js"></script>
+  <div id="productos"></div>
+  <hr />
+  <button onclick="realizarCompra()">Comprar</button>
 </body>
 </html>
+

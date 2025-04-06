@@ -15,7 +15,7 @@ const PUERTO = 8080;
 // Middleware
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
-app.use(express.static("./src/public"));
+
 
 // Handlebars
 app.engine("handlebars", exphbs.engine());
@@ -30,6 +30,8 @@ app.use("/api/products", productsRouter);
 app.use("/api/carts", cartsRouter);
 app.use("/", viewsRouter);
 app.use("/api/session", sessionRouter);
+
+app.use(express.static("./src/public"));
 
 
 app.listen(PUERTO, () => {
