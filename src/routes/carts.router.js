@@ -1,137 +1,151 @@
 import express from "express";
-import CartManager from "../managers/cart-manager-db.js";
-import CartModel from "../models/cart.model.js";
+import passport from "passport";
+
+import CartDAO from "../dao/cart.dao.js";
+import ProductDAO from "../dao/product.dao.js";
+import TicketService from "../services/ticket.service.js";
 
 const router = express.Router();
-const cartManager = new CartManager();
+const cartDAO = new CartDAO();
+const productDAO = new ProductDAO();
+const ticketService = new TicketService();
 
-//crear carrito
+// Crear carrito
 router.post("/", async (req, res) => {
-    try {
-        const nuevoCarrito = await cartManager.crearCarrito();
-        res.json(nuevoCarrito);
-    } catch (error) {
-        console.error("Error al crear un nuevo carrito", error);
-        res.status(500).json({ error: "Error interno del servidor" });
-    }
+  try {
+    const nuevoCarrito = await cartDAO.crearCarrito();
+    res.json(nuevoCarrito);
+  } catch (error) {
+    console.error("Error al crear carrito:", error);
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
 });
 
-//productos de determinado carrito
+// Obtener productos de un carrito
 router.get("/:cid", async (req, res) => {
-    const cartId = req.params.cid;
+  try {
+    const carrito = await cartDAO.obtenerCarritoConProductos(req.params.cid);
+    if (!carrito) return res.status(404).json({ error: "Carrito no encontrado" });
 
-    try {
-        const carrito = await CartModel.findById(cartId);
-
-        if (!carrito) {
-            console.log("No existe ese carrito con el id");
-            return res.status(404).json({ error: "Carrito no encontrado" });
-        }
-
-        return res.json(carrito.products);
-    } catch (error) {
-        console.error("Error al obtener el carrito", error);
-        res.status(500).json({ error: "Error interno del servidor" });
-    }
+    res.json(carrito.products);
+  } catch (error) {
+    console.error("Error al obtener carrito:", error);
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
 });
 
-//agregar productos a carritos
-router.post("/:cid/product/:pid", async (req, res) => {
-    const cartId = req.params.cid;
-    const productId = req.params.pid;
+// Agregar producto a carrito
+router.post("/:cid/product/:pid", passport.authenticate("jwt", { session: false }), async (req, res) => {
+  try {
+    const { cid, pid } = req.params;
     const quantity = req.body.quantity || 1;
+    const updatedCart = await cartDAO.agregarProducto(cid, pid, quantity);
 
-    try {
-        const actualizarCarrito = await cartManager.agregarProductoAlCarrito(cartId, productId, quantity);
-        res.json(actualizarCarrito.products);
-    } catch (error) {
-        console.error("Error al agregar producto al carrito", error);
-        console.log(error);
-        res.status(500).json({ error: "Error interno del servidor" });
-    }
+    res.json(updatedCart);
+  } catch (error) {
+    console.error("Error al agregar producto al carrito:", error);
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
 });
 
-// eliminar producto por id de carrito
-router.delete('/:cid/product/:pid', async (req, res) => {
-    try {
-        const cartId = req.params.cid;
-        const productId = req.params.pid;
-
-        const updatedCart = await cartManager.eliminarProductoDelCarrito(cartId, productId);
-
-        res.json({
-            status: 'success',
-            message: 'Producto eliminado del carrito correctamente',
-            updatedCart,
-        });
-    } catch (error) {
-        console.error('Error al eliminar el producto del carrito', error);
-        res.status(500).json({
-            status: 'error',
-            error: 'Error interno del servidor',
-        });
-    }
+// Eliminar producto de carrito
+router.delete("/:cid/product/:pid", async (req, res) => {
+  try {
+    const { cid, pid } = req.params;
+    const updatedCart = await cartDAO.eliminarProducto(cid, pid);
+    res.json({ message: "Producto eliminado", updatedCart });
+  } catch (error) {
+    console.error("Error al eliminar producto:", error);
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
 });
 
-//actualizamos los productos del carrito
-router.put('/:cid', async (req, res) => {
+// Actualizar productos del carrito (array de objetos {product, quantity})
+router.put("/:cid", async (req, res) => {
+  try {
+    const updatedCart = await cartDAO.actualizarProductos(req.params.cid, req.body);
+    res.json(updatedCart);
+  } catch (error) {
+    console.error("Error al actualizar carrito:", error);
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
+});
+
+// Actualizar cantidad de un producto
+router.put("/:cid/product/:pid", async (req, res) => {
+  try {
+    const { cid, pid } = req.params;
+    const { quantity } = req.body;
+    const updatedCart = await cartDAO.actualizarCantidad(cid, pid, quantity);
+    res.json({ message: "Cantidad actualizada", updatedCart });
+  } catch (error) {
+    console.error("Error al actualizar cantidad:", error);
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
+});
+
+// Vaciar carrito
+router.delete("/:cid", async (req, res) => {
+  try {
+    const updatedCart = await cartDAO.vaciarCarrito(req.params.cid);
+    res.json({ message: "Carrito vaciado", updatedCart });
+  } catch (error) {
+    console.error("Error al vaciar carrito:", error);
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
+});
+
+// Finalizar compra y generar ticket 🎟️
+router.post("/:cid/purchase", passport.authenticate("jwt", { session: false }), async (req, res) => {
+  try {
     const cartId = req.params.cid;
-    const updatedProducts = req.body;
+    const userEmail = req.user.email;
 
-    try {
-        const updatedCart = await cartManager.actualizarCarrito(cartId, updatedProducts);
-        res.json(updatedCart);
-    } catch (error) {
-        console.error('Error al actualizar el carrito', error);
-        res.status(500).json({
-            status: 'error',
-            error: 'Error interno del servidor',
+    const carrito = await cartDAO.obtenerCarritoConProductos(cartId);
+    if (!carrito) return res.status(404).json({ error: "Carrito no encontrado" });
+
+    const productosComprados = [];
+    const productosNoComprados = [];
+
+    for (const item of carrito.products) {
+      const producto = await productDAO.getById(item.product._id);
+
+      if (producto.stock >= item.quantity) {
+        producto.stock -= item.quantity;
+        await productDAO.update(producto._id, { stock: producto.stock });
+        productosComprados.push({
+          product: producto._id,
+          quantity: item.quantity,
+          price: producto.price,
         });
+      } else {
+        productosNoComprados.push(item.product._id);
+      }
     }
-});
 
-//actualizamos cantidades
-router.put('/:cid/product/:pid', async (req, res) => {
-    try {
-        const cartId = req.params.cid;
-        const productId = req.params.pid;
-        const newQuantity = req.body.quantity;
+    const total = productosComprados.reduce((acc, p) => acc + p.quantity * p.price, 0);
 
-        const updatedCart = await cartManager.actualizarCantidadDeProducto(cartId, productId, newQuantity);
+    const ticket = await ticketService.createTicket({
+      amount: total,
+      purchaser: userEmail,
+    });
 
-        res.json({
-            status: 'success',
-            message: 'Cantidad del producto actualizada correctamente',
-            updatedCart,
-        });
-    } catch (error) {
-        console.error('Error al actualizar la cantidad del producto en el carrito', error);
-        res.status(500).json({
-            status: 'error',
-            error: 'Error interno del servidor',
-        });
-    }
-});
+    await cartDAO.actualizarProductos(cartId, carrito.products.filter(item =>
+      productosNoComprados.includes(item.product._id.toString())
+    ));
 
-//vaciar carrito
-router.delete('/:cid', async (req, res) => {
-    try {
-        const cartId = req.params.cid;
+    res.json({
+      message: productosNoComprados.length > 0
+        ? "Compra parcial realizada. Algunos productos no tenían stock suficiente."
+        : "Compra completa realizada.",
+      ticket,
+      productosNoComprados,
+    });
 
-        const updatedCart = await cartManager.vaciarCarrito(cartId);
-
-        res.json({
-            status: 'success',
-            message: 'Todos los productos del carrito fueron eliminados correctamente',
-            updatedCart,
-        });
-    } catch (error) {
-        console.error('Error al vaciar el carrito', error);
-        res.status(500).json({
-            status: 'error',
-            error: 'Error interno del servidor',
-        });
-    }
+  } catch (error) {
+    console.error("Error al procesar compra:", error);
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
 });
 
 export default router;
